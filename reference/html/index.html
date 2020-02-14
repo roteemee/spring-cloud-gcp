@@ -7671,6 +7671,25 @@ public class User {
     private String name;
 
     private Integer age;
+
+    public User() {
+    }
+
+    public String getName() {
+        return this.name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Integer getAge() {
+        return this.age;
+    }
+
+    public void setAge(Integer age) {
+        this.age = age;
+    }
 }</code></pre>
 </div>
 </div>
@@ -7692,6 +7711,66 @@ Internally we use Firestore client library object mapping. See <a href="https://
 </td>
 </tr>
 </table>
+</div>
+<div class="sect3">
+<h4 id="embedded-entities-and-lists"><a class="anchor" href="#embedded-entities-and-lists"></a><a class="link" href="#embedded-entities-and-lists">15.2.1. Embedded entities and lists</a></h4>
+<div class="paragraph">
+<p>Spring Data Cloud Firestore supports embedded properties of custom types and lists.
+Given a custom POJO definition, you can have properties of this type or lists of this type in your entities.
+They are stored as embedded documents (or arrays, correspondingly) in the Cloud Firestore.</p>
+</div>
+<div class="paragraph">
+<p>Example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Document(collectionName = "usersCollection")
+public class User {
+    @DocumentId
+    private String name;
+
+    private Integer age;
+
+    private List&lt;String&gt; pets;
+
+    private List&lt;Address&gt; addresses;
+
+    private Address homeAddress;
+
+    public List&lt;String&gt; getPets() {
+        return this.pets;
+    }
+
+    public void setPets(List&lt;String&gt; pets) {
+        this.pets = pets;
+    }
+
+    public List&lt;Address&gt; getAddresses() {
+        return this.addresses;
+    }
+
+    public void setAddresses(List&lt;Address&gt; addresses) {
+        this.addresses = addresses;
+    }
+
+    public Address getHomeAddress() {
+        return this.homeAddress;
+    }
+
+    public void setHomeAddress(Address homeAddress) {
+        this.homeAddress = homeAddress;
+    }
+
+    public static class Address {
+        String streetAddress;
+        String country;
+
+        public Address() {
+        }
+    }
+}</code></pre>
+</div>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -7739,7 +7818,10 @@ Internally we use Firestore client library object mapping. See <a href="https://
     UserRepository userRepository;
 
     public void writeReadDeleteTest() {
-        User alice = new User("Alice", 29);
+        List&lt;User.Address&gt; addresses = Arrays.asList(new User.Address("123 Alice st", "US"),
+                new User.Address("1 Alice ave", "US"));
+        User.Address homeAddress = new User.Address("10 Alice blvd", "UK");
+        User alice = new User("Alice", 29, null, addresses, homeAddress);
         User bob = new User("Bob", 60);
 
         this.userRepository.save(alice).block();
@@ -7748,6 +7830,10 @@ Internally we use Firestore client library object mapping. See <a href="https://
         assertThat(this.userRepository.count().block()).isEqualTo(2);
         assertThat(this.userRepository.findAll().map(User::getName).collectList().block())
                 .containsExactlyInAnyOrder("Alice", "Bob");
+
+        User aliceLoaded = this.userRepository.findById("Alice").block();
+        assertThat(aliceLoaded.getAddresses()).isEqualTo(addresses);
+        assertThat(aliceLoaded.getHomeAddress()).isEqualTo(homeAddress);
     }
 }</code></pre>
 </div>
