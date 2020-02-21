@@ -135,11 +135,12 @@ $(addBlockSwitches);
 <li><a href="#pubsub-configuration">4.5. Configuration</a></li>
 </ul>
 </li>
-<li><a href="#spring-resources">5. Spring Resources</a>
+<li><a href="#google-cloud-storage">5. Google Cloud Storage</a>
 <ul class="sectlevel2">
-<li><a href="#google-cloud-storage">5.1. Google Cloud Storage</a></li>
-<li><a href="#configuration-2">5.2. Configuration</a></li>
-<li><a href="#sample-2">5.3. Sample</a></li>
+<li><a href="#using-cloud-storage">5.1. Using Cloud Storage</a></li>
+<li><a href="#cloud-storage-objects-as-spring-resources">5.2. Cloud Storage Objects As Spring Resources</a></li>
+<li><a href="#configuration-2">5.3. Configuration</a></li>
+<li><a href="#sample-2">5.4. Sample</a></li>
 </ul>
 </li>
 <li><a href="#spring-jdbc">6. Spring JDBC</a>
@@ -1575,14 +1576,11 @@ After this amount of time has elapsed (counting from the first element added), t
 </div>
 </div>
 <div class="sect1">
-<h2 id="spring-resources"><a class="anchor" href="#spring-resources"></a><a class="link" href="#spring-resources">5. Spring Resources</a></h2>
+<h2 id="google-cloud-storage"><a class="anchor" href="#google-cloud-storage"></a><a class="link" href="#google-cloud-storage">5. Google Cloud Storage</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="https://docs.spring.io/spring/docs/current/spring-framework-reference/html/resources.html">Spring Resources</a> are an abstraction for a number of low-level resources, such as file system files, classpath files, servlet context-relative files, etc.
-Spring Cloud GCP adds a new resource type: a Google Cloud Storage (GCS) object.</p>
-</div>
-<div class="paragraph">
-<p>A Spring Boot starter is provided to auto-configure the various Storage components.</p>
+<p><a href="https://cloud.google.com/storage/docs">Google Cloud Storage</a> allows storing any types of files in single or multiple regions.
+A Spring Boot starter is provided to auto-configure the various Storage components.</p>
 </div>
 <div class="paragraph">
 <p>Maven coordinates, using <a href="#_bill_of_materials">Spring Cloud GCP BOM</a>:</p>
@@ -1609,7 +1607,33 @@ Spring Cloud GCP adds a new resource type: a Google Cloud Storage (GCS) object.<
 <p>This starter is also available from <a href="https://start.spring.io/">Spring Initializr</a> through the <code>GCP Storage</code> entry.</p>
 </div>
 <div class="sect2">
-<h3 id="google-cloud-storage"><a class="anchor" href="#google-cloud-storage"></a><a class="link" href="#google-cloud-storage">5.1. Google Cloud Storage</a></h3>
+<h3 id="using-cloud-storage"><a class="anchor" href="#using-cloud-storage"></a><a class="link" href="#using-cloud-storage">5.1. Using Cloud Storage</a></h3>
+<div class="paragraph">
+<p>The starter automatically configures and registers a <code>Storage</code> bean in the Spring application context.
+The <code>Storage</code> bean (<a href="https://googleapis.dev/java/google-cloud-storage/latest/com/google/cloud/storage/Storage.html">Javadoc</a>) can be used to list/create/update/delete buckets (a group of objects with similar permissions and resiliency requirements) and objects.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Autowired
+private Storage storage;
+
+public void createFile() {
+    Bucket bucket = storage.create(BucketInfo.of("my-app-storage-bucket"));
+
+    storage.create(
+        BlobInfo.newBuilder("my-app-storage-bucket", "subdirectory/my-file").build(),
+            "file contents".getBytes()
+    );
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cloud-storage-objects-as-spring-resources"><a class="anchor" href="#cloud-storage-objects-as-spring-resources"></a><a class="link" href="#cloud-storage-objects-as-spring-resources">5.2. Cloud Storage Objects As Spring Resources</a></h3>
+<div class="paragraph">
+<p><a href="https://docs.spring.io/spring/docs/current/spring-framework-reference/html/resources.html">Spring Resources</a> are an abstraction for a number of low-level resources, such as file system files, classpath files, servlet context-relative files, etc.
+Spring Cloud GCP adds a new resource type: a Google Cloud Storage (GCS) object.</p>
+</div>
 <div class="paragraph">
 <p>The Spring Resource Abstraction for Google Cloud Storage allows GCS objects to be accessed by their GCS URL using the <code>@Value</code> annotation:</p>
 </div>
@@ -1656,7 +1680,7 @@ However, creating signed URLs requires that the resource was created using servi
 <p>The Spring Boot Starter for Google Cloud Storage auto-configures the <code>Storage</code> bean required by the <code>spring-cloud-gcp-storage</code> module, based on the <code>CredentialsProvider</code> provided by the Spring Boot GCP starter.</p>
 </div>
 <div class="sect3">
-<h4 id="setting-the-content-type"><a class="anchor" href="#setting-the-content-type"></a><a class="link" href="#setting-the-content-type">5.1.1. Setting the Content Type</a></h4>
+<h4 id="setting-the-content-type"><a class="anchor" href="#setting-the-content-type"></a><a class="link" href="#setting-the-content-type">5.2.1. Setting the Content Type</a></h4>
 <div class="paragraph">
 <p>You can set the content-type of Google Cloud Storage files from their corresponding <code>Resource</code> objects:</p>
 </div>
@@ -1668,7 +1692,7 @@ However, creating signed URLs requires that the resource was created using servi
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuration-2"><a class="anchor" href="#configuration-2"></a><a class="link" href="#configuration-2">5.2. Configuration</a></h3>
+<h3 id="configuration-2"><a class="anchor" href="#configuration-2"></a><a class="link" href="#configuration-2">5.3. Configuration</a></h3>
 <div class="paragraph">
 <p>The Spring Boot Starter for Google Cloud Storage provides the following configuration options:</p>
 </div>
@@ -1720,7 +1744,7 @@ However, creating signed URLs requires that the resource was created using servi
 </table>
 </div>
 <div class="sect2">
-<h3 id="sample-2"><a class="anchor" href="#sample-2"></a><a class="link" href="#sample-2">5.3. Sample</a></h3>
+<h3 id="sample-2"><a class="anchor" href="#sample-2"></a><a class="link" href="#sample-2">5.4. Sample</a></h3>
 <div class="paragraph">
 <p>A <a href="https://github.com/spring-cloud/spring-cloud-gcp/tree/master/spring-cloud-gcp-samples/spring-cloud-gcp-storage-resource-sample">sample application</a> and a <a href="https://codelabs.developers.google.com/codelabs/spring-cloud-gcp-gcs/index.html">codelab</a> are available.</p>
 </div>
