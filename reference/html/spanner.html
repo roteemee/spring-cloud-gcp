@@ -1674,15 +1674,24 @@ The delete operation happens in a single transaction.</p>
 <p>The names of the tags of the SQL correspond to the <code>@Param</code> annotated names of the method parameters.</p>
 </div>
 <div class="paragraph">
-<p>Custom SQL query methods can accept a single <code>Sort</code> or <code>Pageable</code> parameter that is applied on top of any paging but will override any sorting in the SQL:</p>
+<p>Interleaved properties are loaded eagerly, unless they are annotated with <code>@Interleaved(lazy = true)</code>.</p>
+</div>
+<div class="paragraph">
+<p>Custom SQL query methods can accept a single <code>Sort</code> or <code>Pageable</code> parameter that is applied on top of the specified custom query.
+It is the recommended way to control the sort order of the results, which is not guaranteed by the <code>ORDER BY</code> clause in the SQL query.
+This is due to the fact that the user-provided query is used as a sub-query, and Cloud Spanner doesn&#8217;t preserve order in subquery results.</p>
+</div>
+<div class="paragraph">
+<p>You might want to use <code>ORDER BY</code> with <code>LIMIT</code> to obtain the top records, according to a specified order.
+However, to ensure the correct sort order of the final result set, sort options have to be passed in with a <code>Pageable</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">	@Query("SELECT * FROM trades ORDER BY action DESC")
-	List&lt;Trade&gt; sortedTrades(Pageable pageable);
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">	@Query("SELECT * FROM trades")
+	List&lt;Trade&gt; fetchTrades(Pageable pageable);
 
-	@Query("SELECT * FROM trades ORDER BY action DESC LIMIT 1")
- 	Trade sortedTopTrade(Pageable pageable);</code></pre>
+	@Query("SELECT * FROM trades ORDER BY price DESC LIMIT 1")
+ 	Trade topTrade(Pageable pageable);</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1690,7 +1699,7 @@ The delete operation happens in a single transaction.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">	List&lt;Trade&gt; customSortedTrades = tradeRepository.sortedTrades(PageRequest
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">	List&lt;Trade&gt; customSortedTrades = tradeRepository.fetchTrades(PageRequest
   				.of(2, 2, org.springframework.data.domain.Sort.by(Order.asc("id"))));</code></pre>
 </div>
 </div>
