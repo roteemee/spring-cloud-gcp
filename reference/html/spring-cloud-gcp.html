@@ -264,14 +264,23 @@ $(addBlockSwitches);
 <li><a href="#configuration-10">19.3. Configuration</a></li>
 </ul>
 </li>
-<li><a href="#cloud-foundry">20. Cloud Foundry</a></li>
-<li><a href="#kotlin-support">21. Kotlin Support</a>
+<li><a href="#secret-manager">20. Secret Manager</a>
 <ul class="sectlevel2">
-<li><a href="#prerequisites-2">21.1. Prerequisites</a></li>
-<li><a href="#sample-14">21.2. Sample</a></li>
+<li><a href="#dependency-setup-2">20.1. Dependency Setup</a></li>
+<li><a href="#secret-manager-property-source">20.2. Secret Manager Property Source</a></li>
+<li><a href="#secret-manager-template">20.3. Secret Manager Template</a></li>
+<li><a href="#authentication-settings">20.4. Authentication Settings</a></li>
+<li><a href="#sample-application">20.5. Sample Application</a></li>
 </ul>
 </li>
-<li><a href="#configuration-properties">22. Configuration properties</a></li>
+<li><a href="#cloud-foundry">21. Cloud Foundry</a></li>
+<li><a href="#kotlin-support">22. Kotlin Support</a>
+<ul class="sectlevel2">
+<li><a href="#prerequisites-2">22.1. Prerequisites</a></li>
+<li><a href="#sample-14">22.2. Sample</a></li>
+</ul>
+</li>
+<li><a href="#configuration-properties">23. Configuration properties</a></li>
 </ul>
 </div>
 </div>
@@ -1181,6 +1190,10 @@ Flux&lt;AcknowledgeablePubsubMessage&gt; flux
 For unlimited demand, the Pub/Sub subscription will be polled regularly, at intervals determined by <code>pollingPeriodMs</code> parameter passed in when creating the <code>Flux</code>.
 For bounded demand, the <code>pollingPeriodMs</code> parameter is unused.
 Instead, as many messages as possible (up to the requested number) are delivered immediately, with the remaining messages delivered as they become available.</p>
+</div>
+<div class="paragraph">
+<p>Any exceptions thrown by the underlying message retrieval logic will be passed as an error to the stream.
+The error handling operators (<code>Flux#retry()</code>, <code>Flux#onErrorResume()</code> etc.) can be used to recover.</p>
 </div>
 <div class="paragraph">
 <p>The full range of Project Reactor operations can be applied to the stream.
@@ -8989,7 +9002,209 @@ This is needed to indicate that you wish to reply on the built-in async support 
 </div>
 </div>
 <div class="sect1">
-<h2 id="cloud-foundry"><a class="anchor" href="#cloud-foundry"></a><a class="link" href="#cloud-foundry">20. Cloud Foundry</a></h2>
+<h2 id="secret-manager"><a class="anchor" href="#secret-manager"></a><a class="link" href="#secret-manager">20. Secret Manager</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="https://cloud.google.com/secret-manager">Google Cloud Secret Manager</a> is a secure and convenient method for storing API keys, passwords, certificates, and other sensitive data.
+A detailed summary of its features can be found in the <a href="https://cloud.google.com/blog/products/identity-security/introducing-google-clouds-secret-manager">Secret Manager documentation</a>.</p>
+</div>
+<div class="paragraph">
+<p>Spring Cloud GCP provides:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A Spring Boot starter which automatically loads the secrets of your GCP project into your application context as a <a href="https://cloud.spring.io/spring-cloud-commons/multi/multi__spring_cloud_context_application_context_services.html#_the_bootstrap_application_context">Bootstrap Property Source</a>.</p>
+</li>
+<li>
+<p>A <code>SecretManagerTemplate</code> which allows you to read, write, and update secrets in Secret Manager.</p>
+</li>
+</ul>
+</div>
+<div class="sect2">
+<h3 id="dependency-setup-2"><a class="anchor" href="#dependency-setup-2"></a><a class="link" href="#dependency-setup-2">20.1. Dependency Setup</a></h3>
+<div class="paragraph">
+<p>To begin using this library, add the <code>spring-cloud-gcp-starter-secretmanager</code> artifact to your project.</p>
+</div>
+<div class="paragraph">
+<p>Maven coordinates, using <a href="#_bill_of_materials">Spring Cloud GCP BOM</a>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-cloud-gcp-starter-secretmanager&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Gradle coordinates:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>dependencies {
+  compile group: 'org.springframework.cloud', name: 'spring-cloud-gcp-starter-secretmanager'
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="secret-manager-property-source"><a class="anchor" href="#secret-manager-property-source"></a><a class="link" href="#secret-manager-property-source">20.2. Secret Manager Property Source</a></h3>
+<div class="paragraph">
+<p>The Spring Cloud GCP integration for Google Cloud Secret Manager enables you to use Secret Manager as a bootstrap property source.</p>
+</div>
+<div class="paragraph">
+<p>This feature allows you to automatically load your GCP project&#8217;s secrets as properties into the application context during the <a href="https://cloud.spring.io/spring-cloud-commons/reference/html/#the-bootstrap-application-context">Bootstrap Phase</a>, which refers to the initial phase when a Spring application is being loaded.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This feature disabled by default; to use it, you must set <code>spring.cloud.gcp.secretmanager.bootstrap.enabled</code> to <strong>true</strong>.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Spring Cloud GCP will load the <strong>latest</strong> version of each secret into the application context.</p>
+</div>
+<div class="paragraph">
+<p>All secrets will be loaded into the application environment using their <code>secretId</code> as the property name.
+For example, if your secret&#8217;s id is <code>my-secret</code> then it will be accessible as a property using the name <code>my-secret</code>.
+If you would like to append a prefix string to all property names imported from Secret Manager, you may use the <code>spring.cloud.gcp.secretmanager.secret-name-prefix</code> setting described below.</p>
+</div>
+<div class="paragraph">
+<p>Spring Cloud GCP Secret Manager offers several configuration properties to customize the behavior.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Name</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Required</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Default value</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.gcp.secretmanager.bootstrap.enabled</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables loading secrets from Secret Manager as a bootstrap property source. Set this to <strong>true</strong> to enable the feature.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.gcp.secretmanager.secret-name-prefix</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A prefix string to prepend to the property names of secrets read from Secret Manager</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">"" (empty string)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>See the Authentication Settings section below for information on how to set properties to authenticate to Secret Manager.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="secret-manager-template"><a class="anchor" href="#secret-manager-template"></a><a class="link" href="#secret-manager-template">20.3. Secret Manager Template</a></h3>
+<div class="paragraph">
+<p>The <code>SecretManagerTemplate</code> class simplifies operations of creating, updating, and reading secrets.</p>
+</div>
+<div class="paragraph">
+<p>To begin using this class, you may inject an instance of the class using <code>@Autowired</code> after adding the starter dependency to your project.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Autowired
+private SecretManagerTemplate secretManagerTemplate;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Please consult <a href="https://github.com/spring-cloud/spring-cloud-gcp/blob/master/spring-cloud-gcp-secretmanager/src/main/java/org/springframework/cloud/gcp/secretmanager/SecretManagerOperations.java"><code>SecretManagerOperations</code></a> for information on what operations are available for the Secret Manager template.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Name</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Required</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Default value</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.gcp.secretmanager.enabled</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the autowiring of the <code>SecretManagerTemplate</code> in the application context.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>See the Authentication Settings section below for information on how to set properties to authenticate to Secret Manager.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="authentication-settings"><a class="anchor" href="#authentication-settings"></a><a class="link" href="#authentication-settings">20.4. Authentication Settings</a></h3>
+<div class="paragraph">
+<p>By default, Spring Cloud GCP Secret Manager will authenticate using Application Default Credentials.
+This can be overridden using the authentication properties below.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Name</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Required</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Default value</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.gcp.secretmanager.credentials.location</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OAuth2 credentials for authenticating to the Google Cloud Secret Manager API.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">By default, infers credentials from <a href="https://cloud.google.com/docs/authentication/production">Application Default Credentials</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.gcp.secretmanager.credentials.encoded-key</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Base64-encoded contents of OAuth2 account private key for authenticating to the Google Cloud Secret Manager API.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">By default, infers credentials from <a href="https://cloud.google.com/docs/authentication/production">Application Default Credentials</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.gcp.secretmanager.project-id</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The GCP Project used to access Secret Manager API.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">By default, infers the project from <a href="https://cloud.google.com/docs/authentication/production">Application Default Credentials</a>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="sample-application"><a class="anchor" href="#sample-application"></a><a class="link" href="#sample-application">20.5. Sample Application</a></h3>
+<div class="paragraph">
+<p>A <a href="https://github.com/spring-cloud/spring-cloud-gcp/tree/master/spring-cloud-gcp-samples/spring-cloud-gcp-secretmanager-sample">Secret Manager Sample Application</a> is provided which demonstrates basic property source loading and usage of the template class.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="cloud-foundry"><a class="anchor" href="#cloud-foundry"></a><a class="link" href="#cloud-foundry">21. Cloud Foundry</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Spring Cloud GCP provides support for Cloud Foundry&#8217;s <a href="https://docs.pivotal.io/partners/gcp-sb/index.html">GCP Service Broker</a>.
@@ -9040,7 +9255,7 @@ Otherwise, Cloud Foundry will produce a <code>DataSource</code> with an invalid 
 </div>
 </div>
 <div class="sect1">
-<h2 id="kotlin-support"><a class="anchor" href="#kotlin-support"></a><a class="link" href="#kotlin-support">21. Kotlin Support</a></h2>
+<h2 id="kotlin-support"><a class="anchor" href="#kotlin-support"></a><a class="link" href="#kotlin-support">22. Kotlin Support</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The latest version of the Spring Framework provides first-class support for Kotlin.
@@ -9050,7 +9265,7 @@ For Kotlin users of Spring, the Spring Cloud GCP libraries work out-of-the-box a
 <p>For more information on building a Spring application in Kotlin, please consult the <a href="https://docs.spring.io/spring/docs/current/spring-framework-reference/languages.html#kotlin">Spring Kotlin documentation</a>.</p>
 </div>
 <div class="sect2">
-<h3 id="prerequisites-2"><a class="anchor" href="#prerequisites-2"></a><a class="link" href="#prerequisites-2">21.1. Prerequisites</a></h3>
+<h3 id="prerequisites-2"><a class="anchor" href="#prerequisites-2"></a><a class="link" href="#prerequisites-2">22.1. Prerequisites</a></h3>
 <div class="paragraph">
 <p>Ensure that your Kotlin application is properly set up.
 Based on your build system, you will need to include the correct Kotlin build plugin in your project:</p>
@@ -9083,7 +9298,7 @@ Based on your build system, you will need to include the correct Kotlin build pl
 </div>
 </div>
 <div class="sect2">
-<h3 id="sample-14"><a class="anchor" href="#sample-14"></a><a class="link" href="#sample-14">21.2. Sample</a></h3>
+<h3 id="sample-14"><a class="anchor" href="#sample-14"></a><a class="link" href="#sample-14">22.2. Sample</a></h3>
 <div class="paragraph">
 <p>A <a href="https://github.com/spring-cloud/spring-cloud-gcp/tree/master/spring-cloud-gcp-kotlin-samples/spring-cloud-gcp-kotlin-app-sample">Kotlin sample application</a> is provided to demonstrate a working Maven setup and various Spring Cloud GCP integrations from within Kotlin.</p>
 </div>
@@ -9091,7 +9306,7 @@ Based on your build system, you will need to include the correct Kotlin build pl
 </div>
 </div>
 <div class="sect1">
-<h2 id="configuration-properties"><a class="anchor" href="#configuration-properties"></a><a class="link" href="#configuration-properties">22. Configuration properties</a></h2>
+<h2 id="configuration-properties"><a class="anchor" href="#configuration-properties"></a><a class="link" href="#configuration-properties">23. Configuration properties</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>To see the list of all GCP related configuration properties please check <a href="appendix.html">the Appendix page</a>.</p>
